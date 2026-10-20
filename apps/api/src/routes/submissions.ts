@@ -31,6 +31,23 @@ submissionRouter.get("/mine", authorize(Role.STUDENT), async (req, res) => {
   res.json({ submission });
 });
 
+submissionRouter.patch("/mine", authorize(Role.STUDENT), async (req, res) => {
+  const data = submissionSchema.parse(req.body);
+  const current = await prisma.submission.findUnique({ where: { studentId: req.user!.id }, select: { id: true, status: true } });
+  if (!current) throw new AppError(404, "You have not submitted a project yet.");
+  if (current.status !== SubmissionStatus.PENDING) throw new AppError(409, "Reviewed submissions can no longer be edited.");
+  const submission = await prisma.submission.update({ where: { id: current.id }, data });
+  res.json({ submission });
+});
+
+submissionRouter.delete("/mine", authorize(Role.STUDENT), async (req, res) => {
+  const current = await prisma.submission.findUnique({ where: { studentId: req.user!.id }, select: { id: true, status: true } });
+  if (!current) throw new AppError(404, "You have not submitted a project yet.");
+  if (current.status !== SubmissionStatus.PENDING) throw new AppError(409, "Reviewed submissions cannot be withdrawn.");
+  await prisma.submission.delete({ where: { id: current.id } });
+  res.status(204).send();
+});
+
 const listSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
