@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, PanelLeft } from "lucide-react";
 import { api, type User } from "@/lib/api";
 import { Logo } from "./logo";
-import { Button } from "./ui";
+import { Button } from "@/components/ui/button";
 
 export function DashboardShell({ requiredRole, eyebrow, children }: { requiredRole: User["role"]; eyebrow: string; children: (user: User) => React.ReactNode }) {
   const router = useRouter();

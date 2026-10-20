@@ -7,7 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { api, ApiError, type User } from "@/lib/api";
-import { Button, Field, Input } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/form-field";
 
 const schema = z.object({ name: z.string().trim().min(2, "Use at least 2 characters.").optional(), email: z.string().email("Enter a valid email."), password: z.string().min(8, "Password must be at least 8 characters.") });
 type Values = z.infer<typeof schema>;
