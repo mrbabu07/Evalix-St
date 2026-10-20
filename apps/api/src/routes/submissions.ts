@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Role, SubmissionStatus } from "@prisma/client";
+import { Prisma, Role, SubmissionStatus } from "@prisma/client";
 import { z } from "zod";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
@@ -51,16 +51,30 @@ submissionRouter.delete("/mine", authorize(Role.STUDENT), async (req, res) => {
 const listSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
-  status: z.nativeEnum(SubmissionStatus).optional()
+  status: z.nativeEnum(SubmissionStatus).optional(),
+  search: z.string().trim().max(100).optional(),
+  sortBy: z.enum(["createdAt", "projectName", "status"]).default("createdAt"),
+  order: z.enum(["asc", "desc"]).default("desc")
 });
 
 submissionRouter.get("/", authorize(Role.MENTOR), async (req, res) => {
-  const { page, limit, status } = listSchema.parse(req.query);
-  const where = status ? { status } : {};
+  const { page, limit, status, search, sortBy, order } = listSchema.parse(req.query);
+  const where: Prisma.SubmissionWhereInput = {
+    ...(status && { status }),
+    ...(search && { OR: [
+      { projectName: { contains: search, mode: "insensitive" } },
+      { student: { is: { name: { contains: search, mode: "insensitive" } } } },
+      { student: { is: { email: { contains: search, mode: "insensitive" } } } }
+    ] })
+  };
   const [items, total] = await prisma.$transaction([
     prisma.submission.findMany({
-      where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" },
-      include: { student: { select: { id: true, name: true, email: true } } }
+      where, skip: (page - 1) * limit, take: limit, orderBy: { [sortBy]: order },
+      include: {
+        student: { select: { id: true, name: true, email: true } },
+        reviewer: { select: { id: true, name: true, email: true } },
+        feedback: { orderBy: { createdAt: "desc" }, include: { author: { select: { name: true } } } }
+      }
     }),
     prisma.submission.count({ where })
   ]);
@@ -80,7 +94,14 @@ submissionRouter.get("/stats", authorize(Role.MENTOR), async (_req, res) => {
   });
 });
 
-const reviewSchema = z.object({ status: z.enum([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED]), feedback: z.string().trim().max(1000).optional() });
+const reviewSchema = z.object({
+  status: z.enum([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED]),
+  feedback: z.string().trim().max(1000).optional()
+}).superRefine((data, context) => {
+  if (data.status === SubmissionStatus.REJECTED && !data.feedback) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["feedback"], message: "Feedback is required when rejecting a project." });
+  }
+});
 submissionRouter.patch("/:id/status", authorize(Role.MENTOR), async (req, res) => {
   const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
   const data = reviewSchema.parse(req.body);

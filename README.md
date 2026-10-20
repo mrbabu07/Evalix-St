@@ -90,7 +90,7 @@ npm run db:seed
 | GET | `/api/submissions/mine` | Student | Read own submission and feedback |
 | PATCH | `/api/submissions/mine` | Student | Edit a pending submission |
 | DELETE | `/api/submissions/mine` | Student | Withdraw a pending submission |
-| GET | `/api/submissions` | Mentor | Paginated, status-filtered list |
+| GET | `/api/submissions` | Mentor | Paginated list with server-side status, search, and sorting |
 | GET | `/api/submissions/stats` | Mentor | Aggregate status counts |
 | PATCH | `/api/submissions/:id/status` | Mentor | Review and optionally add feedback |
 
