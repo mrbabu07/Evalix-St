@@ -23,5 +23,6 @@ export type Submission = {
   id: string; projectName: string; repoUrl: string; liveUrl: string; description: string;
   status: "PENDING" | "APPROVED" | "REJECTED"; createdAt: string; reviewedAt?: string | null;
   student?: { id: string; name: string; email: string };
-  feedback?: { id: string; message: string; createdAt: string }[];
+  reviewer?: { id: string; name: string; email: string } | null;
+  feedback?: { id: string; message: string; createdAt: string; author?: { name: string } }[];
 };
